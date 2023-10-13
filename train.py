@@ -4,15 +4,20 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from xgboost import XGBClassifier
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import roc_auc_score, accuracy_score
+from sklearn.model_selection import KFold
+from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import train_test_split
+import joblib
 
 
 
-#df = pd.read_csv("data/train.csv").sample(frac=0.1)
-#df.to_csv("data/train_partial.csv", header=True, index=False)
+# df = pd.read_csv("data/train.csv").sample(frac=0.1)
+# df.to_csv("data/train_partial.csv", header=True, index=False)
 
-df = pd.read_csv("data/train_partial.csv")
-df_val = pd.read_csv("data/val.csv")
+df = pd.read_csv("data/train.csv")
+# df_test = pd.read_csv("data/test.csv")
+# df_val = pd.read_csv("data/val.csv")
 print("taille : ", len(df))
 for column in df.columns:
     print(df[column].isna().sum()," : ",column)
@@ -40,20 +45,41 @@ target = ["Etiquette_DPE"]
 df_filter = df[features_selection_quantitatif + features_selection_qualitative + id + target]
 df_encoded = pd.get_dummies(df_filter, columns=features_selection_qualitative)
 df_encoded = df_encoded.sample(frac=1)
-X = df_encoded[features_selection_quantitatif + features_selection_qualitative]
 y = df_encoded[target]
+X = df_encoded.drop(id + target, axis=1)
 y = pd.get_dummies(y)
 
-# val
-df_filter_val = df_val[features_selection_quantitatif + features_selection_qualitative + id + target]
-df_encoded_val = pd.get_dummies(df_filter_val, columns=features_selection_qualitative)
-df_encoded_val = df_encoded_val.sample(frac=1)
-X_val = df_encoded_val[features_selection_quantitatif + features_selection_qualitative]
-y_val = df_encoded_val[target]
-y_val = pd.get_dummies(y_val)
+# test
+# df_filter_val = df_test[features_selection_quantitatif + features_selection_qualitative + id + target]
+# df_encoded_val = pd.get_dummies(df_filter_val, columns=features_selection_qualitative)
+# df_encoded_val = df_encoded_val.sample(frac=1)
+# X_test = df_encoded_val[features_selection_quantitatif + features_selection_qualitative]
+# y_test = df_encoded_val[target]
+# y_test = pd.get_dummies(y_val)
 
-model = XGBClassifier()
-model.fit(X, y, early_stopping_rounds=10, eval_set=[(X_val, y_val)], verbose=False)
+
+
+
+# k = 5
+# kf = KFold(n_splits=k, shuffle=True, random_state=42)
+# scores = cross_val_score(model, X, y, cv=kf, scoring="accuracy")
+
+# print("Scores de validation croisée en k-fold :", scores)
+# print("Moyenne des scores :", scores.mean())
+X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
+model = XGBClassifier(n_estimators=200)
+model.fit(X_train, y_train, early_stopping_rounds=10, eval_set=[(X_val, y_val)], verbose=True)
+joblib.dump(model, "model/xgboost_model.sav")
+
+prediction = model.predict(X_val)
+accuracy = accuracy_score(y_val, prediction)
+print(accuracy)
+
+
+
+
+
+
 
 
 #df_filter = df[features_selection_quantitatif].dropna()
